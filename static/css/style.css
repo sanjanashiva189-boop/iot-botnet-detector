@@ -1,0 +1,113 @@
+body{
+
+background:#0f172a;
+color:white;
+font-family:Arial;
+margin:0;
+
+}
+
+.container{
+
+display:flex;
+
+}
+
+.sidebar{
+
+width:220px;
+background:#020617;
+padding:20px;
+
+}
+
+.sidebar ul{
+
+list-style:none;
+padding:0;
+
+}
+
+.sidebar li{
+
+padding:10px;
+cursor:pointer;
+
+}
+
+.sidebar li:hover{
+
+background:#1e293b;
+
+}
+
+.main{
+
+flex:1;
+padding:30px;
+
+}
+
+.cards{
+
+display:flex;
+gap:20px;
+
+}
+
+.card{
+
+background:#1e293b;
+padding:20px;
+border-radius:10px;
+width:200px;
+
+}
+
+.menu{
+display:flex;
+gap:20px;
+margin:20px;
+}
+
+.menu-btn{
+background:#1f2937;
+color:white;
+padding:10px 20px;
+text-decoration:none;
+border-radius:5px;
+}
+
+.menu-btn:hover{
+background:#22c55e;
+}
+/* Geographic Origin Section */
+#countryList::-webkit-scrollbar {
+    width: 5px;
+}
+
+#countryList::-webkit-scrollbar-track {
+    background: #1e293b;
+    border-radius: 5px;
+}
+
+#countryList::-webkit-scrollbar-thumb {
+    background: #22d3ee;
+    border-radius: 5px;
+}
+
+.country-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    margin: 5px 0;
+    background: #0f172a;
+    border-radius: 8px;
+    transition: transform 0.2s;
+}
+
+.country-item:hover {
+    transform: translateX(5px);
+    background: #1e293b;
+}

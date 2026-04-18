@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<title>Attack Analytics</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+
+body{
+background:#0f172a;
+color:white;
+text-align:center;
+}
+
+canvas{
+width:30%!important;
+margin:auto;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<h1>Attack Type Distribution</h1>
+
+<canvas id="attackChart"></canvas>
+
+<script>
+
+const ctx=document.getElementById('attackChart')
+
+new Chart(ctx,{
+type:'pie',
+
+data:{
+labels:['Mirai','DDoS','Scanning','Normal'],
+
+datasets:[{
+data:[40,30,20,10],
+backgroundColor:['red','orange','yellow','green']
+}]
+},
+option:{
+responsive:true    
+}
+
+})
+
+</script>
+
+</body>
+
+</html>

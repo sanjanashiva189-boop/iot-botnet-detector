@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<title>Threat Alerts</title>
+
+<style>
+
+    
+body{
+background:#0f172a;
+color:white;
+font-family:Arial;
+padding:20px;
+}
+
+h2{
+margin-bottom:20px;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+background:#111827;
+border-radius:10px;
+overflow:hidden;
+}
+
+th,td{
+padding:12px;
+text-align:center;
+border-bottom:1px solid #374151;
+}
+
+th{
+background:#1f2937;
+}
+
+.low{color:#22c55e}
+.medium{color:#eab308}
+.high{color:#f97316}
+.critical{color:#ef4444}
+
+.status-active{color:red}
+.status-blocked{color:#22c55e}
+
+@keyframes blink {
+50% { opacity: 0.3; }
+}
+
+.critical{
+background:red;
+animation: blink 1s infinite;
+}
+</style>
+
+</head>
+
+<body>
+
+<h2>Threat Alerts</h2>
+
+<table border="1" width="100%">
+
+<thead>
+<tr>
+<th>Time</th>
+<th>Severity</th>
+<th>Attack Type</th>
+<th>Target Device</th>
+<th>Status</th>
+</tr>
+</thead>
+
+<tbody id="alertsTable"></tbody>
+</table>
+
+<audio id="alertSound">
+<source src="/static/alert.mp3" type="audio/mpeg">
+</audio>
+
+<script>
+function loadAlerts(){
+
+fetch("/alerts_data")
+.then(response => response.json())
+.then(data => {
+
+var table = document.getElementById("alertsTable")
+
+if(!table){
+console.log("alertsTable not found")
+return
+}
+
+var row = table.insertRow(0)
+
+row.insertCell(0).innerText = data.time
+row.insertCell(1).innerText = data.severity
+row.insertCell(2).innerText = data.attack
+row.insertCell(3).innerText = data.target
+row.insertCell(4).innerText = data.status
+
+// COLOR ALERTS
+
+if(data.severity=="Critical"){
+row.classList.add("critical")
+document.getElementById("alertSound").play()
+}
+
+else if(data.severity=="High"){
+row.style.background="orange"
+}
+
+else{
+row.style.background="yellow"
+}
+
+})
+
+}
+
+setInterval(loadAlerts,2000)
+</script>
+
+</body>
+
+</html>

@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>IoT Botnet Detection - Network Traffic Monitor</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial;
+            background: #020617;
+            color: white;
+            display: flex;
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            width: 220px;
+            background: #0f172a;
+            height: 100vh;
+            padding-top: 20px;
+            border-right: 1px solid #1e293b;
+            position: fixed;
+        }
+
+        .sidebar h2 {
+            text-align: center;
+            color: #22d3ee;
+        }
+
+        .sidebar a {
+            display: block;
+            padding: 15px;
+            color: white;
+            text-decoration: none;
+        }
+
+        .sidebar a:hover, .sidebar a.active {
+            background: #1e293b;
+            color: #22d3ee;
+        }
+
+        /* MAIN CONTENT */
+        .main {
+            flex: 1;
+            padding: 20px;
+            margin-left: 220px;
+        }
+
+        /* STATS CARDS */
+        .traffic-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: #0f172a;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #1e293b;
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            color: #8b93b3;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .stat-card .value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #22d3ee;
+        }
+
+        .stat-card .unit {
+            font-size: 12px;
+            color: #8b93b3;
+        }
+
+        /* CHARTS */
+        .charts-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .chart-card {
+            background: #0f172a;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #1e293b;
+        }
+
+        .chart-card h3 {
+            margin-bottom: 20px;
+            color: #22d3ee;
+        }
+
+        canvas {
+            max-height: 300px;
+        }
+
+        /* TRAFFIC TABLE */
+        .traffic-table {
+            background: #0f172a;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #1e293b;
+        }
+
+        .traffic-table h3 {
+            margin-bottom: 20px;
+            color: #22d3ee;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #1e293b;
+        }
+
+        th {
+            color: #8b93b3;
+            font-weight: normal;
+        }
+
+        .anomaly {
+            color: #dc3545;
+        }
+
+        .normal {
+            color: #28a745;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .live-badge {
+            background: #dc3545;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            animation: pulse 2s infinite;
+            display: inline-block;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+    <h2>🛡 IoT Shield</h2>
+    <a href="/">Overview</a>
+    <a href="/network-traffic" class="active">📊 Network Traffic</a>
+    <a href="/devices">Devices</a>
+    <a href="/alerts">Alerts</a>
+    <a href="/analytics">Analytics</a>
+    <a href="/timeline">Timeline</a>
+    <a href="/logout" style="margin-top: 50px; color: #dc3545;">🚪 Logout</a>
+</div>
+
+<!-- MAIN DASHBOARD -->
+<div class="main">
+    <h1>📊 Network Traffic Monitor <span class="live-badge">LIVE</span></h1>
+    
+    <!-- Traffic Stats -->
+    <div class="traffic-stats">
+        <div class="stat-card">
+            <h3>Total Traffic (24h)</h3>
+            <div class="value" id="totalTraffic">6.4</div>
+            <div class="unit">Gbps</div>
+        </div>
+        <div class="stat-card">
+            <h3>Anomalous Traffic</h3>
+            <div class="value" id="anomalousTraffic">11.5</div>
+            <div class="unit">%</div>
+        </div>
+        <div class="stat-card">
+            <h3>Peak Traffic</h3>
+            <div class="value" id="peakTraffic">570</div>
+            <div class="unit">Mbps</div>
+        </div>
+        <div class="stat-card">
+            <h3>Active Connections</h3>
+            <div class="value" id="activeConnections">14,283</div>
+            <div class="unit">connections</div>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="charts-container">
+        <div class="chart-card">
+            <h3>Network Traffic (24 Hours)</h3>
+            <canvas id="trafficChart"></canvas>
+        </div>
+        <div class="chart-card">
+            <h3>Traffic Distribution</h3>
+            <canvas id="distributionChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Traffic Details Table -->
+    <div class="traffic-table">
+        <h3>📋 Traffic Details by Hour</h3>
+        <table id="trafficTable">
+            <thead>
+                <tr><th>Time</th><th>Normal Traffic (Mbps)</th><th>Anomalous Traffic (Mbps)</th><th>Status</th></tr>
+            </thead>
+            <tbody id="trafficTableBody">
+                <!-- Dynamic content -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    // Initialize socket
+    const socket = io();
+    
+    // Chart instances
+    let trafficChart, distributionChart;
+    
+    // Generate initial data
+    const hours = Array.from({length: 24}, (_, i) => `${i}:00`);
+    
+    // Generate realistic traffic data
+    function generateTrafficData() {
+        const normalTraffic = [];
+        const anomalousTraffic = [];
+        
+        for (let i = 0; i < 24; i++) {
+            // Normal traffic pattern (higher during day)
+            let normalBase = 300 + Math.sin(i * Math.PI / 12) * 150;
+            normalTraffic.push(Math.round(normalBase + Math.random() * 50));
+            
+            // Anomalous traffic (spikes at certain hours)
+            let anomalous = 0;
+            if (Math.random() < 0.3) { // 30% chance of anomaly
+                anomalous = Math.round(50 + Math.random() * 200);
+            }
+            anomalousTraffic.push(anomalous);
+        }
+        
+        return { normalTraffic, anomalousTraffic };
+    }
+    
+    let trafficData = generateTrafficData();
+    
+    // Initialize Traffic Chart
+    function initTrafficChart() {
+        const ctx = document.getElementById('trafficChart').getContext('2d');
+        trafficChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: hours,
+                datasets: [
+                    {
+                        label: 'Normal Traffic',
+                        data: trafficData.normalTraffic,
+                        borderColor: '#28a745',
+                        backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Anomalous Traffic',
+                        data: trafficData.anomalousTraffic,
+                        borderColor: '#dc3545',
+                        backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { position: 'top' }
+                }
+            }
+        });
+    }
+    
+    // Initialize Distribution Chart
+    function initDistributionChart() {
+        const ctx = document.getElementById('distributionChart').getContext('2d');
+        
+        const totalNormal = trafficData.normalTraffic.reduce((a, b) => a + b, 0);
+        const totalAnomalous = trafficData.anomalousTraffic.reduce((a, b) => a + b, 0);
+        const total = totalNormal + totalAnomalous;
+        
+        distributionChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Normal Traffic', 'Anomalous Traffic'],
+                datasets: [{
+                    data: [totalNormal, totalAnomalous],
+                    backgroundColor: ['#28a745', '#dc3545'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'bottom' }
+                }
+            }
+        });
+    }
+    
+    // Update Traffic Table
+    function updateTrafficTable() {
+        const tbody = document.getElementById('trafficTableBody');
+        tbody.innerHTML = '';
+        
+        // Show last 12 hours
+        const startHour = Math.max(0, hours.length - 12);
+        
+        for (let i = startHour; i < hours.length; i++) {
+            const row = tbody.insertRow();
+            row.insertCell(0).innerText = hours[i];
+            row.insertCell(1).innerText = trafficData.normalTraffic[i];
+            row.insertCell(2).innerText = trafficData.anomalousTraffic[i];
+            
+            const statusCell = row.insertCell(3);
+            if (trafficData.anomalousTraffic[i] > 50) {
+                statusCell.innerHTML = '<span class="anomaly">⚠️ Anomaly Detected</span>';
+            } else {
+                statusCell.innerHTML = '<span class="normal">✓ Normal</span>';
+            }
+        }
+    }
+    
+    // Update Stats
+    function updateStats() {
+        const totalNormal = trafficData.normalTraffic.reduce((a, b) => a + b, 0);
+        const totalAnomalous = trafficData.anomalousTraffic.reduce((a, b) => a + b, 0);
+        const total = totalNormal + totalAnomalous;
+        const anomalousPercent = total > 0 ? (totalAnomalous / total * 100).toFixed(1) : 0;
+        
+        document.getElementById('totalTraffic').innerText = (total / 1000).toFixed(1);
+        document.getElementById('anomalousTraffic').innerText = anomalousPercent;
+        
+        const peak = Math.max(...trafficData.anomalousTraffic);
+        document.getElementById('peakTraffic').innerText = peak;
+        
+        const connections = 14000 + Math.floor(Math.random() * 1000);
+        document.getElementById('activeConnections').innerText = connections.toLocaleString();
+    }
+    
+    // Simulate real-time traffic updates
+    function simulateRealTimeTraffic() {
+        setInterval(() => {
+            // Shift data and add new value
+            trafficData.normalTraffic.shift();
+            trafficData.anomalousTraffic.shift();
+            
+            // Generate new hour data
+            const newNormal = 300 + Math.sin(new Date().getHours() * Math.PI / 12) * 150 + Math.random() * 50;
+            let newAnomalous = 0;
+            
+            // Simulate attack detection (15% chance)
+            if (Math.random() < 0.15) {
+                newAnomalous = 80 + Math.random() * 200;
+                
+                // Emit attack event
+                socket.emit('traffic_anomaly', {
+                    timestamp: new Date().toLocaleTimeString(),
+                    traffic: newAnomalous,
+                    severity: newAnomalous > 150 ? 'high' : 'medium'
+                });
+            }
+            
+            trafficData.normalTraffic.push(Math.round(newNormal));
+            trafficData.anomalousTraffic.push(Math.round(newAnomalous));
+            
+            // Update charts
+            trafficChart.data.datasets[0].data = trafficData.normalTraffic;
+            trafficChart.data.datasets[1].data = trafficData.anomalousTraffic;
+            trafficChart.update();
+            
+            // Update distribution chart
+            const totalNormal = trafficData.normalTraffic.reduce((a, b) => a + b, 0);
+            const totalAnomalous = trafficData.anomalousTraffic.reduce((a, b) => a + b, 0);
+            distributionChart.data.datasets[0].data = [totalNormal, totalAnomalous];
+            distributionChart.update();
+            
+            // Update stats and table
+            updateStats();
+            updateTrafficTable();
+            
+            // Play sound if anomaly detected
+            if (newAnomalous > 100) {
+                playAlertSound();
+            }
+            
+        }, 5000); // Update every 5 seconds
+    }
+    
+    // Play alert sound
+    function playAlertSound() {
+        try {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = 880;
+            gainNode.gain.value = 0.3;
+            
+            oscillator.start();
+            gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.3);
+        } catch(e) {
+            console.log('Audio not supported');
+        }
+    }
+    
+    // Listen for attacks from main system
+    socket.on('new_attack', function(attack) {
+        console.log('Attack detected in traffic monitor:', attack);
+        
+        // Add anomaly to traffic data
+        const currentHour = new Date().getHours();
+        const currentIndex = trafficData.anomalousTraffic.length - 1;
+        trafficData.anomalousTraffic[currentIndex] += attack.severity * 10;
+        
+        // Update charts
+        trafficChart.data.datasets[1].data = trafficData.anomalousTraffic;
+        trafficChart.update();
+        
+        // Update distribution
+        const totalNormal = trafficData.normalTraffic.reduce((a, b) => a + b, 0);
+        const totalAnomalous = trafficData.anomalousTraffic.reduce((a, b) => a + b, 0);
+        distributionChart.data.datasets[0].data = [totalNormal, totalAnomalous];
+        distributionChart.update();
+        
+        // Update stats
+        updateStats();
+        updateTrafficTable();
+        
+        // Play sound
+        playAlertSound();
+    });
+    
+    // Initialize everything
+    initTrafficChart();
+    initDistributionChart();
+    updateStats();
+    updateTrafficTable();
+    simulateRealTimeTraffic();
+    
+    console.log('📊 Network Traffic Monitor Active');
+</script>
+</body>
+</html>

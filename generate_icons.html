@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head><title>Generate Icons</title></head>
+<body>
+<canvas id="canvas"></canvas>
+<script>
+const sizes = [72, 96, 128, 144, 152, 192, 384, 512];
+const bgColor = '#0f172a';
+const iconColor = '#22d3ee';
+
+for (const size of sizes) {
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    
+    // Background
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, size, size);
+    
+    // Border
+    ctx.strokeStyle = iconColor;
+    ctx.lineWidth = size / 32;
+    ctx.beginPath();
+    ctx.arc(size/2, size/2, size/2.5, 0, 2 * Math.PI);
+    ctx.stroke();
+    
+    // Shield icon
+    ctx.fillStyle = iconColor;
+    ctx.font = `${size/2}px Arial`;
+    ctx.fillText('🛡️', size/2.8, size/1.8);
+    
+    // Download
+    const link = document.createElement('a');
+    link.download = `icon-${size}.png`;
+    link.href = canvas.toDataURL();
+    link.click();
+}
+</script>
+</body>
+</html>

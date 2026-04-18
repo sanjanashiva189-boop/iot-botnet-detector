@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<title>Attack Timeline</title>
+
+<style>
+
+body{
+background:#0f172a;
+color:white;
+font-family:Arial;
+display:flex;
+}
+
+.timeline-container{
+flex:3;
+padding:20px;
+}
+
+.filter-panel{
+flex:1;
+background:#111827;
+padding:20px;
+border-left:2px solid #1f2937;
+}
+
+.filter-panel button{
+display:block;
+width:100%;
+margin-bottom:10px;
+padding:10px;
+border:none;
+background:#1f2937;
+color:white;
+cursor:pointer;
+}
+
+.filter-panel button:hover{
+background:#374151;
+}
+
+.event{
+background:#111827;
+padding:10px;
+margin-bottom:10px;
+border-radius:6px;
+}
+
+.low{color:#22c55e}
+.medium{color:#eab308}
+.high{color:#f97316}
+.critical{color:#ef4444}
+
+</style>
+
+</head>
+
+<body>
+
+<div style="margin-bottom:10px">
+
+<button onclick="filterTimeline('All')">All</button>
+<button onclick="filterTimeline('Critical')">Critical</button>
+<button onclick="filterTimeline('High')">High</button>
+<button onclick="filterTimeline('Medium')">Medium</button>
+<button onclick="filterTimeline('Low')">Low</button>
+
+</div>
+
+</div>
+<table>
+<thead>
+<tr>
+<th>Time</th>
+<th>Severity</th>
+<th>Attack Type</th>
+<th>Target</th>
+</tr>
+</thead>
+
+<tbody id="timelineTable">
+</tbody>
+
+</table>
+
+<script>
+
+function filterEvents(level){
+
+let events=document.querySelectorAll('.event')
+
+events.forEach(e=>{
+
+if(level=="all"){
+e.style.display="block"
+}
+else if(e.classList.contains(level)){
+e.style.display="block"
+}
+else{
+e.style.display="none"
+}
+
+})
+
+}
+function addTimelineEvent(){
+
+fetch("/generate_attack")
+
+.then(response=>response.json())
+
+.then(data=>{
+
+let container=document.querySelector(".timeline-container")
+
+let div=document.createElement("div")
+
+div.className="event"
+
+div.innerHTML=`
+${data.time} — ${data.attack} (${data.severity})
+`
+
+container.prepend(div)
+
+})
+
+}
+
+
+setInterval(function(){
+
+fetch("/timeline_data")
+
+.then(response => response.json())
+
+.then(data => {
+
+console.log(data)
+
+})
+
+},2000)
+
+
+
+</script>
+<script>
+
+var currentFilter = "All"
+
+function loadTimeline(){
+
+fetch("/timeline_data")
+.then(response => response.json())
+.then(data => {
+
+if(currentFilter !== "All" && data.severity !== currentFilter){
+return
+}
+
+var table = document.getElementById("timelineTable")
+
+var row = table.insertRow(0)
+
+row.insertCell(0).innerText = data.time
+
+var severityCell = row.insertCell(1)
+severityCell.innerText = data.severity
+
+row.insertCell(2).innerText = data.attack
+row.insertCell(3).innerText = data.target
+
+
+/* COLOR SEVERITY */
+
+if(data.severity == "Critical"){
+severityCell.style.backgroundColor="red"
+severityCell.style.color="white"
+}
+else if(data.severity == "High"){
+severityCell.style.backgroundColor="orange"
+}
+else if(data.severity == "Medium"){
+severityCell.style.backgroundColor="yellow"
+}
+else{
+severityCell.style.backgroundColor="lightgreen"
+}
+
+})
+
+}
+
+function filterTimeline(level){
+
+currentFilter = level
+
+document.getElementById("timelineTable").innerHTML=""
+
+}
+
+setInterval(loadTimeline,2000)
+
+</script>
+
+</body>
+</html>

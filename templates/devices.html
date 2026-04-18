@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<title>Devices</title>
+
+<style>
+
+body{
+background:#0f172a;
+color:white;
+font-family:Arial;
+padding:20px;
+}
+
+input{
+padding:10px;
+width:250px;
+margin-bottom:20px;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+background:#111827;
+}
+
+th,td{
+padding:12px;
+border-bottom:1px solid #374151;
+text-align:center;
+}
+
+th{
+background:#1f2937;
+}
+
+.online{color:#22c55e}
+.offline{color:red}
+
+</style>
+
+</head>
+
+<body>
+
+<h2>Device Monitor</h2>
+
+
+<h3>Filter Devices</h3>
+
+<button onclick="filterDevice('all')">All</button>
+<button onclick="filterDevice('Safe')">Safe</button>
+<button onclick="filterDevice('Compromised')">Compromised</button>
+<button onclick="filterDevice('Suspicious')">Suspicious</button>
+<button onclick="filterDevice('Offline')">Offline</button>
+
+<div style="text-align:right; margin-bottom:10px;">
+<input type="text" id="deviceSearch" placeholder="Search device..." onkeyup="searchDevice()">
+</div>
+
+<table border="1" width="100%">
+
+<thead>
+<tr>
+<th>Device</th>
+<th>Status</th>
+</tr>
+</thead>
+
+<tbody id="deviceTable">
+
+<tr>
+<td>IoT_Device_1</td>
+<td>Safe</td>
+</tr>
+
+<tr>
+<td>IoT_Device_2</td>
+<td>Compromised</td>
+</tr>
+
+<tr>
+<td>IoT_Device_3</td>
+<td>Suspicious</td>
+</tr>
+
+<tr>
+<td>IoT_Device_4</td>
+<td>Offline</td>
+</tr>
+</tbody>
+
+</table>
+
+
+<script>
+
+var statuses = ["Safe","Compromised","Suspicious","Offline"]
+
+var table = document.getElementById("deviceTable")
+
+for(let i=1;i<=30;i++){
+
+var row = table.insertRow()
+
+row.insertCell(0).innerText = "IoT_Device_"+i
+
+var statusCell = row.insertCell(1)
+
+var status = statuses[Math.floor(Math.random()*4)]
+
+statusCell.innerText = status
+
+updateColor(statusCell,status)
+
+}
+function updateColor(cell,status){
+
+if(status=="Safe"){
+cell.style.backgroundColor="lightgreen"
+}
+
+else if(status=="Compromised"){
+cell.style.backgroundColor="red"
+cell.style.color="white"
+}
+
+else if(status=="Suspicious"){
+cell.style.backgroundColor="orange"
+}
+
+else{
+cell.style.backgroundColor="gray"
+cell.style.color="white"
+}
+
+}
+
+
+
+setInterval(function(){
+
+var table = document.getElementById("deviceTable")
+
+var rows = table.getElementsByTagName("tr")
+
+for(let i=0;i<rows.length;i++){
+
+var statusCell = rows[i].cells[1]
+
+var statuses = ["Safe","Compromised","Suspicious","Offline"]
+
+var newStatus = statuses[Math.floor(Math.random()*4)]
+
+statusCell.innerText = newStatus
+
+updateColor(statusCell,newStatus)
+
+}
+
+},5000)
+
+function filterDevice(status){
+
+let rows = document.querySelectorAll("#deviceTable tr")
+
+rows.forEach(function(row){
+
+let deviceStatus = row.cells[1].innerText
+
+if(status == "all"){
+row.style.display=""
+}
+
+else if(deviceStatus == status){
+row.style.display=""
+}
+
+else{
+row.style.display="none"
+}
+
+})
+
+}
+
+
+
+</script>
+
+</body>
+
+</html>
