@@ -5,9 +5,9 @@ import threading
 import time
 import random
 import sqlite3
-import pandas as pd
 from io import StringIO, BytesIO
 import os
+import csv
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-here'
@@ -68,63 +68,51 @@ def init_db():
 
 init_db()
 
-# ============ GEOGRAPHIC ORIGIN FUNCTION ============
+# ============ GEOGRAPHIC DATA ============
+COUNTRIES = ['China', 'Russia', 'USA', 'Brazil', 'India', 'Others']
+COUNTRY_COLORS = {
+    'China': '#dc3545',
+    'Russia': '#ff6b6b',
+    'USA': '#ffc107',
+    'Brazil': '#17a2b8',
+    'India': '#28a745',
+    'Others': '#6c757d'
+}
+
+def get_country_from_ip(ip):
+    """Simulate getting country from IP address"""
+    weights = [28, 21, 15, 11, 8, 17]
+    return random.choices(COUNTRIES, weights=weights)[0]
+
 def get_attack_geographic_origin():
     """Get attack distribution by geographic origin"""
     conn = sqlite3.connect('iot_botnet.db')
     c = conn.cursor()
     
-    # Get counts from database
     c.execute("SELECT country, COUNT(*) FROM attacks GROUP BY country")
     db_counts = dict(c.fetchall())
     conn.close()
     
-    # Default data (from your image)
     default_counts = {
-        'China': 342,
-        'Russia': 256,
-        'USA': 189,
-        'Brazil': 134,
-        'India': 98,
-        'Others': 207
+        'China': 342, 'Russia': 256, 'USA': 189,
+        'Brazil': 134, 'India': 98, 'Others': 207
     }
     
-    # Country colors
-    country_colors = {
-        'China': '#dc3545',
-        'Russia': '#ff6b6b',
-        'USA': '#ffc107',
-        'Brazil': '#17a2b8',
-        'India': '#28a745',
-        'Others': '#6c757d'
-    }
-    
-    countries = ['China', 'Russia', 'USA', 'Brazil', 'India', 'Others']
-    
-    # Build response
     geo_data = {}
-    for country in countries:
+    for country in COUNTRIES:
         attacks = db_counts.get(country, default_counts.get(country, 0))
         geo_data[country] = {
             'attacks': attacks,
             'percentage': 0,
-            'color': country_colors[country]
+            'color': COUNTRY_COLORS[country]
         }
     
-    # Calculate percentages
     total = sum(v['attacks'] for v in geo_data.values())
     if total > 0:
         for country in geo_data:
             geo_data[country]['percentage'] = round(geo_data[country]['attacks'] / total * 100, 1)
     
     return geo_data
-
-# ============ GET COUNTRY FROM IP ============
-def get_country_from_ip(ip):
-    """Simulate getting country from IP address"""
-    countries = ['China', 'Russia', 'USA', 'Brazil', 'India', 'Others']
-    weights = [28, 21, 15, 11, 8, 17]  # Percentages
-    return random.choices(countries, weights=weights)[0]
 
 # ============ GLOBAL VARIABLES ============
 attack_counter = 0
@@ -144,7 +132,6 @@ def simulate_real_time_attacks():
             attack_counter += 1
             total_attacks += 1
             
-            # Generate random source IP and determine country
             source_ip = f'{random.randint(1,255)}.{random.randint(0,255)}.{random.randint(0,255)}.{random.randint(1,254)}'
             country = get_country_from_ip(source_ip)
             
@@ -160,7 +147,6 @@ def simulate_real_time_attacks():
                 'country': country
             }
             
-            # Save to database
             conn = sqlite3.connect('iot_botnet.db')
             c = conn.cursor()
             c.execute('''INSERT INTO attacks (timestamp, source_ip, destination_ip, attack_type, severity, protocol, status, country)
@@ -171,20 +157,17 @@ def simulate_real_time_attacks():
             conn.commit()
             conn.close()
             
-            # Send real-time updates
             socketio.emit('new_attack', attack)
             socketio.emit('counter_update', {'counter': attack_counter, 'total': total_attacks})
             socketio.emit('geo_update', get_attack_geographic_origin())
             
-            print(f"⚔️ Attack #{total_attacks}: {attack['attack_type']} from {country} (Severity: {attack['severity']}/10)")
+            print(f"⚔️ Attack #{total_attacks}: {attack['attack_type']} from {country}")
 
-# Start simulation
 threading.Thread(target=simulate_real_time_attacks, daemon=True).start()
 print("🚀 Attack simulation started")
 
 # ============ HELPER FUNCTIONS ============
 def get_dashboard_stats():
-    """Get dashboard statistics"""
     conn = sqlite3.connect('iot_botnet.db')
     c = conn.cursor()
     
@@ -208,7 +191,6 @@ def get_dashboard_stats():
         avg_risk = c.fetchone()[0] or 0
         network_health = max(0, min(100, 100 - avg_risk))
         
-        # Attack distribution
         c.execute("SELECT attack_type, COUNT(*) FROM attacks GROUP BY attack_type")
         attack_dist = dict(c.fetchall())
         
@@ -239,7 +221,6 @@ def get_dashboard_stats():
         }
 
 def get_recent_attacks(limit=20):
-    """Get recent attacks"""
     conn = sqlite3.connect('iot_botnet.db')
     c = conn.cursor()
     c.execute("SELECT id, timestamp, source_ip, destination_ip, attack_type, severity, protocol, status, country FROM attacks ORDER BY timestamp DESC LIMIT ?", (limit,))
@@ -259,7 +240,6 @@ def get_recent_attacks(limit=20):
     } for a in attacks]
 
 def get_all_devices():
-    """Get all devices"""
     conn = sqlite3.connect('iot_botnet.db')
     c = conn.cursor()
     c.execute("SELECT device_id, device_type, ip_address, status, risk_score FROM devices LIMIT 50")
@@ -273,7 +253,6 @@ def get_all_devices():
         'status': d[3],
         'risk_score': d[4]
     } for d in devices]
-
 
 # ============ ROUTES ============
 @app.route('/')
@@ -314,7 +293,6 @@ def api_stats():
 
 @app.route('/api/geo-attacks')
 def api_geo_attacks():
-    """Get attack geographic distribution"""
     return jsonify(get_attack_geographic_origin())
 
 @app.route('/api/attacks')
@@ -333,14 +311,29 @@ def api_devices():
 
 @app.route('/api/export/csv')
 def export_csv():
+    """Export attacks to CSV without pandas"""
     conn = sqlite3.connect('iot_botnet.db')
-    df = pd.read_sql_query("SELECT * FROM attacks ORDER BY timestamp DESC", conn)
+    c = conn.cursor()
+    
+    # Get all attacks
+    c.execute("SELECT * FROM attacks ORDER BY timestamp DESC")
+    attacks = c.fetchall()
+    
+    # Get column names
+    c.execute("PRAGMA table_info(attacks)")
+    columns = [col[1] for col in c.fetchall()]
     conn.close()
     
     output = StringIO()
-    df.to_csv(output, index=False)
-    output.seek(0)
+    writer = csv.writer(output)
     
+    # Write headers
+    writer.writerow(columns)
+    
+    # Write data
+    writer.writerows(attacks)
+    
+    output.seek(0)
     return send_file(
         BytesIO(output.getvalue().encode()),
         mimetype='text/csv',
@@ -375,12 +368,6 @@ def live_data():
         'status': 'ATTACK' if attack_count > 0 else 'SAFE',
         'attack': attack_count
     })
-from flask import send_from_directory
-
-# Serve static files for PWA
-@app.route('/static/<path:filename>')
-def serve_static(filename):
-    return send_from_directory('static', filename)
 
 # ============ SOCKET.IO EVENTS ============
 @socketio.on('connect')
@@ -391,24 +378,6 @@ def handle_connect():
 def handle_disconnect():
     print(f"❌ Client disconnected")
 
-     # Push notification subscription endpoint
-@app.route('/api/subscribe', methods=['POST'])
-def subscribe_push():
-    """Store push notification subscription"""
-    subscription = request.json
-    # Store subscription in database
-    # In production, save this to database
-    print(f"Push subscription received: {subscription}")
-    return jsonify({'success': True})
-
-@app.route('/api/send-notification', methods=['POST'])
-def send_notification():
-    """Send push notification to all subscribers"""
-    data = request.json
-    # In production, send to all stored subscriptions
-    # This requires VAPID keys setup
-    return jsonify({'success': True})
-
 # ============ START SERVER ============
 if __name__ == '__main__':
     print("\n" + "="*60)
@@ -416,9 +385,6 @@ if __name__ == '__main__':
     print("="*60)
     print("📍 URL: http://localhost:5000")
     print("🔑 Login: admin / admin123")
-    print("\n⚡ Status: REAL-TIME SIMULATION ACTIVE")
-    print("🌍 Geographic Attack Tracking ENABLED")
     print("="*60 + "\n")
     
     socketio.run(app, debug=True, host='0.0.0.0', port=5000)
-   
